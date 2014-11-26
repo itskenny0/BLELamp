@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">ImagicLamp</string>
+    <string name="action_settings">Settings</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="no_data">暂无内容</string>
+    <string name="ble_not_supported">本机暂不支持Bluetooth 4.0</string>
+    <string name="error_bluetooth_not_supported">Bluetooth不支持</string>
+    <string name="refresh">刷新</string>
+    <string name="scanBLEDevice">正在扫描蓝牙设备……</string>
+    <string name="unknown_characteristic">未知的特征</string>
+    <string name="unknown_service">未知的服务</string>
+    <string name="imagic_disconnect">未连接</string>
+    <string name="imagic_connect">已连接</string>
+    <string name="imagic_scan">扫描</string>
+    <string name="imagic_stop">停止</string>
+
+    <string name="imagic_liangdu">亮度</string>
+    <string name="imagic_rgb">调色</string>
+</resources>

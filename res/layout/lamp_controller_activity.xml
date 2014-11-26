@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical" >
+
+    <LinearLayout
+        android:id="@+id/controllerLayoutBg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical" >
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingLeft="30dp"
+            android:paddingRight="30dp"
+            android:paddingTop="30dp"
+            android:visibility="invisible" >
+
+            <RelativeLayout
+                android:id="@+id/lamp_controller_onOffBG"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" >
+
+                <Button
+                    android:id="@+id/lamp_controller_onOFF"
+                    android:layout_width="80dp"
+                    android:layout_height="80dp" />
+            </RelativeLayout>
+
+            <Button
+                android:id="@+id/lamp_controller_clock"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:layout_alignParentRight="true"
+                android:gravity="right" />
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:id="@+id/rlBg"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" >
+
+            <com.imagic.lamp.kevin.ble.LampImageView2
+                android:id="@+id/baiquanView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:src="@drawable/baiquan" />
+
+            <ImageView
+                android:id="@+id/imageView1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:src="@drawable/sepan" />
+
+            <LinearLayout
+                android:id="@+id/rgbLayout"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:background="@drawable/rgb" >
+
+                <ImageView
+                    android:id="@+id/imageVie"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_centerInParent="true" />
+            </LinearLayout>
+        </RelativeLayout>
+    </LinearLayout>
+
+</LinearLayout>
