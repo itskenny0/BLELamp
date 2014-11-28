@@ -2,46 +2,57 @@ package com.imagic.lamp.kevin;
 
 import java.util.ArrayList;
 
-import com.imagic.lamp.kevin.ble.RFLampDevice;
-import com.imagic.lamp.kevin.ble.RFImagicApp;
-import com.imagic.lamp.kevin.ble.RFImagicBLEService;
-import com.imagic.lamp.kevin.ble.RFImagicManage;
-import com.imagic.lamp.kevin.ble.BLEDevice.RFStarBLEBroadcastReceiver;
-import com.imagic.lamp.kevin.ble.RFImagicManage.RFImagicManageListener;
-import com.imagic.lamp.kevin.R;
-
-import android.os.Bundle;
 import android.app.Activity;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ListView;
+import android.widget.Toast;
 
-public class MainActivity extends Activity implements RFImagicManageListener,
-		OnItemClickListener, RFStarBLEBroadcastReceiver {
+import com.imagic.lamp.kevin.ble.BLEDevice.RFStarBLEBroadcastReceiver;
+import com.imagic.lamp.kevin.ble.RFImagicBLEService;
+import com.imagic.lamp.kevin.ble.RFImagicManage;
+import com.imagic.lamp.kevin.ble.RFImagicManage.RFImagicManageListener;
+import com.imagic.lamp.kevin.ble.RFLampDevice;
+
+public class MainActivity extends Activity implements RFImagicManageListener, OnItemClickListener, RFStarBLEBroadcastReceiver {
 	private RFImagicManage manager = null;
 	private ListView list = null;
 	private BAdapter bleAdapter = null;
 	private ArrayList<BluetoothDevice> arraySource = null;
-	private RFImagicApp app = null;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 
-		app = (RFImagicApp) getApplication();
+		// 检察系统是否包含蓝牙低功耗的jar包
+		if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+			Toast.makeText(this, R.string.ble_not_supported, Toast.LENGTH_SHORT).show();
+			finish();
+			return;
+		}
+		
+		BluetoothManager blmanager = (BluetoothManager)getSystemService(Context.BLUETOOTH_SERVICE);
+		// 检察手机硬件是否支持蓝牙低功耗
+		if (blmanager.getAdapter() == null) {
+			Toast.makeText(this, R.string.error_bluetooth_not_supported, Toast.LENGTH_SHORT).show();
+			finish();
+			return;
+		}
 
 		list = (ListView) this.findViewById(R.id.listView1);
-		manager = new RFImagicManage(this);
-		manager.setScanTime(20000);
+		manager = RFImagicManage.getInstance();
+		manager.setBluetoothAdapter(blmanager.getAdapter());
 		manager.setRFstarBLEManagerListener(this);
 		arraySource = new ArrayList<BluetoothDevice>();
 		bleAdapter = new BAdapter(this, arraySource);
@@ -58,7 +69,6 @@ public class MainActivity extends Activity implements RFImagicManageListener,
 
 	@Override
 	protected void onResume() {
-		// TODO Auto-generated method stub
 		super.onResume();
 		arraySource.clear();
 		bleAdapter.notifyDataSetChanged();
@@ -66,12 +76,28 @@ public class MainActivity extends Activity implements RFImagicManageListener,
 		manager.startScanBluetoothDevice();
 	}
 
-	
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+		manager.unRegisterAllDevice();
+	}
+
+	/**
+	 * 设置权限后，返回时调用
+	 * 
+	 * @param requestCode
+	 * @param resultCode
+	 * @param data
+	 */
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		// User chose not to enable Bluetooth.
 		super.onActivityResult(requestCode, resultCode, data);
-		manager.onRequestResult(requestCode, resultCode, data);
+
+		if (requestCode == RFImagicManage.REQUEST_CODE && resultCode == Activity.RESULT_CANCELED) {
+			finish();
+			return;
+		}
 	}
 
 	@Override
@@ -85,8 +111,7 @@ public class MainActivity extends Activity implements RFImagicManageListener,
 		} else {
 			menu.findItem(R.id.menu_stop).setVisible(true);
 			menu.findItem(R.id.menu_scan).setVisible(false);
-			menu.findItem(R.id.menu_refresh).setActionView(
-					R.layout.rfimagic_progress);
+			menu.findItem(R.id.menu_refresh).setActionView(R.layout.rfimagic_progress);
 		}
 		return true;
 	}
@@ -109,27 +134,15 @@ public class MainActivity extends Activity implements RFImagicManageListener,
 	}
 
 	@Override
-	public void onItemClick(AdapterView<?> parent, View view, int position,
-			long id) {
+	public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
 		// TODO Auto-generated method stub
 
 		BluetoothDevice device = this.arraySource.get(position);
-		RFLampDevice lampDevice = null;
-		for (RFLampDevice tmpDevice : app.manager.getLampDevices()) {
-			if (tmpDevice.device.equals(device)) {
-				lampDevice = tmpDevice;
-			}
-		}
-		lampDevice.setBLEBroadcastDelegate(this);
-
-		if (!app.lampConnecteArray.contains(lampDevice)) {
-			app.lampConnecteArray.add(lampDevice);
-		}
 
 		Intent intent = new Intent(this, LampControllerActivity.class);
-		intent.putExtra(manager.RFSTAR, device);
+		intent.putExtra(RFImagicManage.RFSTAR, device);
 		startActivity(intent);
-		app.manager.stopScanBluetoothDevice();
+		manager.stopScanBluetoothDevice();
 	}
 
 	/*
@@ -140,13 +153,12 @@ public class MainActivity extends Activity implements RFImagicManageListener,
 	 * byte[],int)
 	 */
 	@Override
-	public void RFstarBLEManageListener(BluetoothDevice device, int rssi,
-			byte[] scanRecord, int lampType) {
+	public void RFstarBLEManageListener(BluetoothDevice device, int rssi, byte[] scanRecord, int lampType) {
 		// TODO Auto-generated method stub
 		arraySource.add(device);
 		bleAdapter.notifyDataSetChanged();
 
-		app.manager.addLampDevice(new RFLampDevice(this, device, lampType));
+		manager.addLampDevice(new RFLampDevice(this, device, lampType));
 	}
 
 	/*
@@ -175,8 +187,7 @@ public class MainActivity extends Activity implements RFImagicManageListener,
 	}
 
 	@Override
-	public void onReceive(Context context, Intent intent, String macData,
-			String uuid) {
+	public void onReceive(Context context, Intent intent, String macData, String uuid) {
 		// TODO Auto-generated method stub
 		String action = intent.getAction();
 		if (RFImagicBLEService.ACTION_GATT_CONNECTED.equals(action)) {
