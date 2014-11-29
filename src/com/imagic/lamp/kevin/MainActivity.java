@@ -3,6 +3,7 @@ package com.imagic.lamp.kevin;
 import java.util.ArrayList;
 
 import android.app.Activity;
+import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.content.Context;
@@ -28,7 +29,7 @@ public class MainActivity extends Activity implements RFImagicManageListener, On
 	private RFImagicManage manager = null;
 	private ListView list = null;
 	private BAdapter bleAdapter = null;
-	private ArrayList<BluetoothDevice> arraySource = null;
+	private ArrayList<BluetoothDevice> arraySource = new ArrayList<BluetoothDevice>();
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -43,8 +44,9 @@ public class MainActivity extends Activity implements RFImagicManageListener, On
 		}
 		
 		BluetoothManager blmanager = (BluetoothManager)getSystemService(Context.BLUETOOTH_SERVICE);
+		BluetoothAdapter adapter = blmanager.getAdapter();
 		// 检察手机硬件是否支持蓝牙低功耗
-		if (blmanager.getAdapter() == null) {
+		if (adapter == null) {
 			Toast.makeText(this, R.string.error_bluetooth_not_supported, Toast.LENGTH_SHORT).show();
 			finish();
 			return;
@@ -52,9 +54,8 @@ public class MainActivity extends Activity implements RFImagicManageListener, On
 
 		list = (ListView) this.findViewById(R.id.listView1);
 		manager = RFImagicManage.getInstance();
-		manager.setBluetoothAdapter(blmanager.getAdapter());
+		manager.setBluetoothAdapter(adapter);
 		manager.setRFstarBLEManagerListener(this);
-		arraySource = new ArrayList<BluetoothDevice>();
 		bleAdapter = new BAdapter(this, arraySource);
 		list.setAdapter(bleAdapter);
 		list.setOnItemClickListener(this);
