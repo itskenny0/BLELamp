@@ -1,9 +1,6 @@
 package com.imagic.lamp.kevin;
 
-import java.util.ArrayList;
-
 import android.app.Activity;
-import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -27,13 +24,13 @@ import com.imagic.lamp.kevin.ble.RFImagicBLEService;
 import com.imagic.lamp.kevin.ble.RFImagicManage;
 import com.imagic.lamp.kevin.ble.RFImagicManage.RFImagicManageListener;
 import com.imagic.lamp.kevin.ble.RFLampDevice;
+import com.imagic.lamp.util.Utils;
 
 public class MainActivity extends Activity implements RFImagicManageListener, OnItemClickListener, RFStarBLEBroadcastReceiver, BluetoothAdapter.LeScanCallback {
 	private RFImagicManage manager = null;
 	private ListView list = null;
 	private DeviceListAdapter listAdapter = null;
 	private BluetoothAdapter bleAdapter = null;
-	private ArrayList<BluetoothDevice> arraySource = new ArrayList<BluetoothDevice>();
 	
 	private ProgressDialog dialog = null;
 
@@ -62,7 +59,7 @@ public class MainActivity extends Activity implements RFImagicManageListener, On
 		manager = RFImagicManage.getInstance();
 		manager.setBluetoothAdapter(bleAdapter);
 		manager.setRFstarBLEManagerListener(this);
-		listAdapter = new DeviceListAdapter(this, arraySource);
+		listAdapter = new DeviceListAdapter(this);
 		list.setAdapter(listAdapter);
 		list.setOnItemClickListener(this);
 		
@@ -84,7 +81,7 @@ public class MainActivity extends Activity implements RFImagicManageListener, On
 	@Override
 	protected void onResume() {
 		super.onResume();
-		arraySource.clear();
+		manager.clearBLEDevices();
 		listAdapter.notifyDataSetChanged();
 	}
 
@@ -100,10 +97,9 @@ public class MainActivity extends Activity implements RFImagicManageListener, On
 	 */
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-		// User chose not to enable Bluetooth.
 		super.onActivityResult(requestCode, resultCode, data);
 
-		if (requestCode == RFImagicManage.REQUEST_CODE ) {
+		if (requestCode == Utils.REQUEST_CODE ) {
 			if (resultCode == Activity.RESULT_CANCELED) {
 				Toast.makeText(this, R.string.open_bluetooth, Toast.LENGTH_SHORT).show();
 			} else if (resultCode == Activity.RESULT_OK) {
@@ -114,7 +110,6 @@ public class MainActivity extends Activity implements RFImagicManageListener, On
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
-		// Inflate the menu; this adds items to the action bar if it is present.
 		getMenuInflater().inflate(R.menu.main, menu);
 		if (!manager.getScanningState()) {
 			menu.findItem(R.id.menu_stop).setVisible(false);
@@ -132,11 +127,7 @@ public class MainActivity extends Activity implements RFImagicManageListener, On
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
 		case R.id.menu_scan:
-			if (this.arraySource != null) {
-				this.arraySource.clear();
-				listAdapter.notifyDataSetChanged();
-			}
-			
+			listAdapter.notifyDataSetChanged();
 			requestBluetooth();
 			break;
 		case R.id.menu_stop:
@@ -148,37 +139,25 @@ public class MainActivity extends Activity implements RFImagicManageListener, On
 
 	@Override
 	public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-		// TODO Auto-generated method stub
-
-		BluetoothDevice device = this.arraySource.get(position);
-
+		BluetoothDevice device = this.manager.getBLEDevice(position);
+		
 		Intent intent = new Intent(this, LampControllerActivity.class);
-		intent.putExtra(RFImagicManage.RFSTAR, device);
+		intent.putExtra(Utils.RFSTAR, device);
 		startActivity(intent);
 		manager.stopScanBluetoothDevice();
 	}
 
-	/*
-	 * 扫描到设备时，调用 (non-Javadoc)
-	 * 
-	 * @see com.rfstar.antilost.kevin.ble.RFstarManage.RFstarManageListener#
-	 * RFstarBLEManageListener(android.bluetooth.BluetoothDevice, int,
-	 * byte[],int)
+	/**
+	 * 扫描到设备
 	 */
 	@Override
 	public void RFstarBLEManageListener(BluetoothDevice device, int rssi, byte[] scanRecord, int lampType) {
-		// TODO Auto-generated method stub
-		arraySource.add(device);
 		listAdapter.notifyDataSetChanged();
-
 		manager.addLampDevice(new RFLampDevice(this, device, lampType));
 	}
 
-	/*
-	 * 开始扫描防丢器设备 (non-Javadoc)
-	 * 
-	 * @see com.rfstar.antilost.kevin.ble.RFstarManage.RFstarManageListener#
-	 * RFstarBLEManageStartScan()
+	/**
+	 * 开始扫描
 	 */
 	@Override
 	public void RFstarBLEManageStartScan() {
@@ -186,11 +165,8 @@ public class MainActivity extends Activity implements RFImagicManageListener, On
 		invalidateOptionsMenu();
 	}
 
-	/*
-	 * 扫描停止后调用 (non-Javadoc) 如：listview停止刷新
-	 * 
-	 * @see com.rfstar.antilost.kevin.ble.RFstarManage.RFstarManageListener#
-	 * RFstarBLEManageStopScan()
+	/**
+	 * 扫描停止
 	 */
 	@Override
 	public void RFstarBLEManageStopScan() {
@@ -205,10 +181,10 @@ public class MainActivity extends Activity implements RFImagicManageListener, On
 		// TODO Auto-generated method stub
 		String action = intent.getAction();
 		if (RFImagicBLEService.ACTION_GATT_CONNECTED.equals(action)) {
-			Log.d(RFImagicManage.RFSTAR, "111111111 连接完成");
+			Log.d(Utils.RFSTAR, "111111111 连接完成");
 			this.setTitle(macData + "已连接");
 		} else if (RFImagicBLEService.ACTION_GATT_DISCONNECTED.equals(action)) {
-			Log.d(RFImagicManage.RFSTAR, "111111111 连接断开");
+			Log.d(Utils.RFSTAR, "111111111 连接断开");
 			this.setTitle(macData + "已断开");
 		} else if (RFImagicBLEService.ACTION_DATA_AVAILABLE.equals(action)) {
 
@@ -225,7 +201,7 @@ public class MainActivity extends Activity implements RFImagicManageListener, On
 			manager.startScanBluetoothDevice();
 		} else {
 			Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-			startActivityForResult(enableBtIntent, RFImagicManage.REQUEST_CODE);
+			startActivityForResult(enableBtIntent, Utils.REQUEST_CODE);
 		}
 	}
 	
