@@ -3,6 +3,8 @@ package com.imagic.lamp.kevin;
 import java.util.ArrayList;
 
 import android.app.Activity;
+import android.app.Dialog;
+import android.app.ProgressDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
@@ -10,6 +12,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -25,11 +28,14 @@ import com.imagic.lamp.kevin.ble.RFImagicManage;
 import com.imagic.lamp.kevin.ble.RFImagicManage.RFImagicManageListener;
 import com.imagic.lamp.kevin.ble.RFLampDevice;
 
-public class MainActivity extends Activity implements RFImagicManageListener, OnItemClickListener, RFStarBLEBroadcastReceiver {
+public class MainActivity extends Activity implements RFImagicManageListener, OnItemClickListener, RFStarBLEBroadcastReceiver, BluetoothAdapter.LeScanCallback {
 	private RFImagicManage manager = null;
 	private ListView list = null;
-	private BAdapter bleAdapter = null;
+	private DeviceListAdapter listAdapter = null;
+	private BluetoothAdapter bleAdapter = null;
 	private ArrayList<BluetoothDevice> arraySource = new ArrayList<BluetoothDevice>();
+	
+	private ProgressDialog dialog = null;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -44,9 +50,9 @@ public class MainActivity extends Activity implements RFImagicManageListener, On
 		}
 		
 		BluetoothManager blmanager = (BluetoothManager)getSystemService(Context.BLUETOOTH_SERVICE);
-		BluetoothAdapter adapter = blmanager.getAdapter();
+		bleAdapter = blmanager.getAdapter();
 		// 检察手机硬件是否支持蓝牙低功耗
-		if (adapter == null) {
+		if (bleAdapter == null) {
 			Toast.makeText(this, R.string.error_bluetooth_not_supported, Toast.LENGTH_SHORT).show();
 			finish();
 			return;
@@ -54,11 +60,18 @@ public class MainActivity extends Activity implements RFImagicManageListener, On
 
 		list = (ListView) this.findViewById(R.id.listView1);
 		manager = RFImagicManage.getInstance();
-		manager.setBluetoothAdapter(adapter);
+		manager.setBluetoothAdapter(bleAdapter);
 		manager.setRFstarBLEManagerListener(this);
-		bleAdapter = new BAdapter(this, arraySource);
-		list.setAdapter(bleAdapter);
+		listAdapter = new DeviceListAdapter(this, arraySource);
+		list.setAdapter(listAdapter);
 		list.setOnItemClickListener(this);
+		
+		dialog = new ProgressDialog(this);
+		dialog.setMessage("正在扫描设备");
+		dialog.setCanceledOnTouchOutside(false);
+		dialog.setCancelable(false);
+		
+		requestBluetooth();
 	}
 
 	@Override
@@ -72,32 +85,30 @@ public class MainActivity extends Activity implements RFImagicManageListener, On
 	protected void onResume() {
 		super.onResume();
 		arraySource.clear();
-		bleAdapter.notifyDataSetChanged();
-		manager.isEdnabled(this);
-		manager.startScanBluetoothDevice();
+		listAdapter.notifyDataSetChanged();
 	}
 
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();
 		manager.unRegisterAllDevice();
+		dialog.dismiss();
 	}
 
 	/**
 	 * 设置权限后，返回时调用
-	 * 
-	 * @param requestCode
-	 * @param resultCode
-	 * @param data
 	 */
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		// User chose not to enable Bluetooth.
 		super.onActivityResult(requestCode, resultCode, data);
 
-		if (requestCode == RFImagicManage.REQUEST_CODE && resultCode == Activity.RESULT_CANCELED) {
-			finish();
-			return;
+		if (requestCode == RFImagicManage.REQUEST_CODE ) {
+			if (resultCode == Activity.RESULT_CANCELED) {
+				Toast.makeText(this, R.string.open_bluetooth, Toast.LENGTH_SHORT).show();
+			} else if (resultCode == Activity.RESULT_OK) {
+				requestBluetooth();
+			}
 		}
 	}
 
@@ -123,9 +134,10 @@ public class MainActivity extends Activity implements RFImagicManageListener, On
 		case R.id.menu_scan:
 			if (this.arraySource != null) {
 				this.arraySource.clear();
-				bleAdapter.notifyDataSetChanged();
+				listAdapter.notifyDataSetChanged();
 			}
-			manager.startScanBluetoothDevice();
+			
+			requestBluetooth();
 			break;
 		case R.id.menu_stop:
 			manager.stopScanBluetoothDevice();
@@ -157,7 +169,7 @@ public class MainActivity extends Activity implements RFImagicManageListener, On
 	public void RFstarBLEManageListener(BluetoothDevice device, int rssi, byte[] scanRecord, int lampType) {
 		// TODO Auto-generated method stub
 		arraySource.add(device);
-		bleAdapter.notifyDataSetChanged();
+		listAdapter.notifyDataSetChanged();
 
 		manager.addLampDevice(new RFLampDevice(this, device, lampType));
 	}
@@ -185,6 +197,7 @@ public class MainActivity extends Activity implements RFImagicManageListener, On
 		// TODO Auto-generated method stub
 		manager.stopScanBluetoothDevice();
 		invalidateOptionsMenu();
+		dialog.hide();
 	}
 
 	@Override
@@ -200,6 +213,35 @@ public class MainActivity extends Activity implements RFImagicManageListener, On
 		} else if (RFImagicBLEService.ACTION_DATA_AVAILABLE.equals(action)) {
 
 		}
+	}
+	
+	private void requestBluetooth() {
+		if (bleAdapter == null) {
+			return;
+		}
+
+		if (bleAdapter.isEnabled()) {
+			dialog.show();
+			manager.startScanBluetoothDevice();
+		} else {
+			Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+			startActivityForResult(enableBtIntent, RFImagicManage.REQUEST_CODE);
+		}
+	}
+	
+	private Handler handler = new Handler();
+	
+	@Override
+	public void onLeScan(final BluetoothDevice device, final int rssi, final byte[] scanRecord) {
+		// 添加扫描到的device，并刷新数据
+		handler.post(new Runnable() {
+			@Override
+			public void run() {
+				if (!manager.hasBLEDevice(device)) {
+					manager.addBLEDevice(device, rssi, scanRecord);
+				}
+			}
+		});
 	}
 
 }

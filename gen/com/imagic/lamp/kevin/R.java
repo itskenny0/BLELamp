@@ -72,20 +72,21 @@ public final class R {
     public static final class string {
         public static final int action_settings=0x7f060001;
         public static final int app_name=0x7f060000;
-        public static final int ble_not_supported=0x7f060004;
-        public static final int error_bluetooth_not_supported=0x7f060005;
+        public static final int ble_not_supported=0x7f060005;
+        public static final int error_bluetooth_not_supported=0x7f060006;
         public static final int hello_world=0x7f060002;
-        public static final int imagic_connect=0x7f06000b;
-        public static final int imagic_disconnect=0x7f06000a;
-        public static final int imagic_liangdu=0x7f06000e;
-        public static final int imagic_rgb=0x7f06000f;
-        public static final int imagic_scan=0x7f06000c;
-        public static final int imagic_stop=0x7f06000d;
+        public static final int imagic_connect=0x7f06000c;
+        public static final int imagic_disconnect=0x7f06000b;
+        public static final int imagic_liangdu=0x7f06000f;
+        public static final int imagic_rgb=0x7f060010;
+        public static final int imagic_scan=0x7f06000d;
+        public static final int imagic_stop=0x7f06000e;
         public static final int no_data=0x7f060003;
-        public static final int refresh=0x7f060006;
-        public static final int scanBLEDevice=0x7f060007;
-        public static final int unknown_characteristic=0x7f060008;
-        public static final int unknown_service=0x7f060009;
+        public static final int open_bluetooth=0x7f060004;
+        public static final int refresh=0x7f060007;
+        public static final int scanBLEDevice=0x7f060008;
+        public static final int unknown_characteristic=0x7f060009;
+        public static final int unknown_service=0x7f06000a;
     }
     public static final class style {
         /** 
